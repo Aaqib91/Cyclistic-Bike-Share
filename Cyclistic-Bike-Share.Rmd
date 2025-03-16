@@ -1,0 +1,142 @@
+---
+title: "Cyclistic Bike-share Analysis"
+author: "Aaqib Javed"
+date: "2025-02-28"
+output:
+  html_document:
+    df_print: paged
+---
+## **1. Introduction**
+This analysis explores Cyclistic bike-share data to understand usage patterns between casual riders and annual members.
+```{r setup, message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(scales)
+
+```
+```{r}
+## **3. Load and Clean Data**
+
+# Import CSV files for the last 12 months
+
+tdata0923 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0923.csv")
+tdata1023 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata1023.csv")
+tdata1123 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata1123.csv")
+tdata1223 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata1223.csv")
+tdata0124 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0124.csv")
+tdata0224 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0224.csv")
+tdata0324 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0324.csv")
+tdata0424 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0424.csv")
+tdata0524 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0524.csv")
+tdata0624 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0624.csv")
+tdata0724 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0724.csv")
+tdata0824 <- read_csv("C:/Users/Aaqib/OneDrive/Documents/COURSE MATERIALS/Bike_data/tdata0824.csv")
+
+bike_data <- rbind(tdata0923,tdata1023,tdata1123,tdata1223,tdata0124,tdata0224,tdata0324,tdata0424,tdata0524,tdata0624,tdata0724,tdata0824)
+
+# Remove empty rows and columns
+bike_data <- remove_empty(bike_data, which = c("rows", "cols"))
+
+# Convert datetime columns
+bike_data <- bike_data %>%
+  mutate(
+    started_at = ymd_hms(started_at, quiet = TRUE),
+    ended_at = ymd_hms(ended_at, quiet = TRUE),
+    date = as.Date(started_at),
+    start_hour = hour(started_at),
+    end_hour = hour(ended_at)
+  ) %>%
+  filter(!is.na(started_at) & !is.na(ended_at))
+
+# Create new calculated fields
+bike_data <- bike_data %>%
+  mutate(
+    duration = as.numeric(difftime(ended_at, started_at, units = "mins")),
+    day_of_week = wday(started_at, label = TRUE),
+    month_of_year = format(as.Date(date), "%B"),
+    type_of_user = recode(member_casual, "member" = "Annual Member", "casual" = "Casual Rider")
+  ) %>%
+  filter(duration > 0) %>% drop_na()
+```
+
+
+
+```{r}
+## **4. Data Analysis**
+
+# *4.1 Rides Per Day of the Week*
+
+bike_data %>%
+  group_by(type_of_user, day_of_week) %>%
+  summarise(total_rides = n(), .groups = "drop") %>%
+  ggplot(aes(x = day_of_week, y = total_rides, fill = type_of_user)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Rides Per Day of the Week",
+    x = "Day of the Week",
+    y = "Total Rides",
+    fill = "User Type"
+  ) +
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1e-3, suffix = "K")  # Format as 100K, 200K, etc.
+  ) +
+  theme_minimal()
+
+# *4.2 Average Ride Duration Per Weekday*
+
+bike_data %>%
+  group_by(type_of_user, day_of_week) %>%
+  summarise(avg_duration = mean(duration), .groups = "drop") %>%
+  ggplot(aes(x = day_of_week, y = avg_duration, fill = type_of_user)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Average Ride Duration Per Day",
+    x = "Day of the Week",
+    y = "Average Duration (mins)",
+    fill = "User Type"
+  ) +
+  theme_minimal()
+
+# *4.3 Monthly Ride Trends*
+
+bike_data %>%
+  group_by(type_of_user, month_of_year) %>%
+  summarise(total_rides = n(), .groups = "drop") %>%
+  ggplot(aes(x = month_of_year, y = total_rides, fill = type_of_user)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Rides Per Month",
+    x = "Month",
+    y = "Total Number of Rides",
+    fill = "User Type"
+  ) +
+  scale_x_discrete(limits = month.name) +  # Ensure months are in correct order
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1e-3, suffix = "K")  # Format y-axis as 100K, 200K
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+# *4.4 Hourly Distribution in a Day*
+
+bike_data <- bike_data %>% mutate(start_hour = as.numeric(start_hour))
+bike_data %>%
+  group_by(type_of_user, start_hour) %>%
+  summarise(total_rides = n(), .groups = "drop") %>%
+  ggplot(aes(x = start_hour, y = total_rides, fill = type_of_user)) +
+  geom_col(position = "dodge", width = 0.9) +  # Wider bars
+  labs(
+    title = "Hourly Distribution of Rides",
+    x = "Hour of the Day",
+    y = "Total Rides",
+    fill = "User Type"
+  ) +
+  scale_x_continuous(breaks = seq(0, 23, by = 4)) +  # Show labels every 4 hours
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K")) +  # Format y-axis
+  scale_fill_brewer(palette = "Dark2") +  # Set dark colors
+  theme_minimal()
+
+```
+
