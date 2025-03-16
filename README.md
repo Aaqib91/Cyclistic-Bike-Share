@@ -184,7 +184,6 @@ Next Steps:
 
 **7. Appendix**
 
-[Full R
-Code](C://Users/Aaqib/OneDrive/Documents/COURSE%20MATERIALS/Capstone%20Project%20-%20Cyclistic/Cyclistic-Bike-Share.html)
+[Full R Code](https://github.com/Aaqib91/Cyclistic-Bike-Share/blob/main/Cyclistic-Bike-Share.Rmd)
 
 [Raw Data Sample](https://divvy-tripdata.s3.amazonaws.com/index.html)
